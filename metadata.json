@@ -1,0 +1,8 @@
+{
+  "name": "Airlink - Flight Ticket Booking Management System",
+  "description": "A comprehensive B.Tech CSE full-stack flight reservation and management system featuring real-time flight radar tracking, Spring Boot 3.x Java architecture, flight search, seat allocation, simulated payment, e-ticket generation, and admin portal.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
