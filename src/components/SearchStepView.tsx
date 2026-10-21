@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, ArrowLeftRight, Calendar, Users, Briefcase, MapPin, Sparkles, Radio, ChevronRight } from 'lucide-react';
+import { Search, ArrowLeftRight, Calendar, Users, Briefcase, MapPin, Sparkles, Radio, ChevronRight, User } from 'lucide-react';
 import { FlightSearchParams, TravelClass } from '../types';
 import { AirportSelector } from './AirportSelector';
 import { REALISTIC_AIRPORTS } from '../data/airports';
@@ -9,6 +9,7 @@ interface SearchStepViewProps {
   onSearch: (params: FlightSearchParams) => void;
   isLoading: boolean;
   onNavigateToRealtime?: () => void;
+  onOpenProfile?: () => void;
 }
 
 export const SearchStepView: React.FC<SearchStepViewProps> = ({
@@ -16,6 +17,7 @@ export const SearchStepView: React.FC<SearchStepViewProps> = ({
   onSearch,
   isLoading,
   onNavigateToRealtime,
+  onOpenProfile,
 }) => {
   const [tripType, setTripType] = useState<'ONE_WAY' | 'ROUND_TRIP' | 'MULTI_CITY'>('ONE_WAY');
   const [source, setSource] = useState(initialParams.source || 'MAA');
@@ -58,24 +60,43 @@ export const SearchStepView: React.FC<SearchStepViewProps> = ({
   return (
     <div className="w-full max-w-5xl mx-auto space-y-6 animate-in fade-in duration-300">
       
-      {/* Hero Banner with Airplane above clouds */}
-      <div className="relative rounded-3xl overflow-hidden shadow-2xl h-72 sm:h-80 flex items-center justify-start p-8 sm:p-12 text-white bg-slate-900">
+      {/* Hero Banner with Airplane above clouds matching uploaded flight background */}
+      <div className="relative rounded-3xl overflow-hidden shadow-2xl h-64 sm:h-76 md:h-80 flex items-center justify-between p-6 sm:p-10 lg:p-12 text-white bg-slate-950 group">
         <img
-          src="https://images.unsplash.com/photo-1436491865332-7a61a109cc05?auto=format&fit=crop&w=1600&q=80"
-          alt="Airplane flying above sunset clouds"
-          className="absolute inset-0 w-full h-full object-cover object-center opacity-85"
+          src="/assets/aircraft-hero.jpg"
+          alt="Commercial passenger aircraft flying above clouds"
+          className="absolute inset-0 w-full h-full object-cover object-center transition-transform duration-1000 group-hover:scale-103"
+          referrerPolicy="no-referrer"
+          onError={(e) => {
+            (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1436491865332-7a61a109cc05?auto=format&fit=crop&w=2000&q=85';
+          }}
         />
-        <div className="absolute inset-0 bg-gradient-to-r from-slate-950/80 via-blue-950/50 to-transparent"></div>
+        
+        {/* Soft edge gradient to ensure text readability while keeping plane and sunset bright */}
+        <div className="absolute inset-0 bg-gradient-to-r from-slate-950/70 via-slate-950/25 to-transparent pointer-events-none" />
 
-        <div className="relative z-10 max-w-xl">
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight drop-shadow-md text-white">
-            Your Next Journey <br />
-            <span className="text-blue-200">Starts Here</span>
+        <div className="relative z-10 max-w-lg">
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-white drop-shadow-md leading-tight">
+            Your Next Journey<br />
+            Starts Here
           </h1>
-          <p className="mt-2 text-sm sm:text-base text-slate-200 drop-shadow-sm font-medium">
-            Search, compare, and book flights across domestic and international routes with instant confirmation.
+          <p className="mt-2 text-xs sm:text-sm text-slate-200 drop-shadow-sm font-medium hidden sm:block">
+            Search, compare, and book domestic & international flights with real-time seat availability.
           </p>
         </div>
+
+        {/* Top-Right Profile Avatar button matching user's uploaded screenshot */}
+        {onOpenProfile && (
+          <button
+            type="button"
+            onClick={onOpenProfile}
+            className="absolute top-5 right-5 sm:top-6 sm:right-6 z-20 w-10 h-10 rounded-full bg-white text-slate-800 shadow-lg flex items-center justify-center transition-all hover:scale-110 active:scale-95 border border-white/60 cursor-pointer"
+            title="User Profile & Account"
+            aria-label="User Profile"
+          >
+            <User className="w-5 h-5 text-slate-700" />
+          </button>
+        )}
       </div>
 
       {/* Floating White Search Card */}

@@ -130,8 +130,19 @@ function SkyBookMain() {
   // When opening website, open Login/Register page first, then continue booking if credentials are correct
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#0B1E36] via-[#102744] to-[#0A1828] flex flex-col justify-between items-center p-4 sm:p-6 lg:p-8">
-        <div className="w-full flex-1 flex items-center justify-center">
+      <div className="min-h-screen relative flex flex-col justify-between items-center p-4 sm:p-6 lg:p-8 bg-[#0B1E36] overflow-hidden">
+        {/* Ambient Flight Sunset Clouds Backdrop */}
+        <div className="absolute inset-0 z-0 pointer-events-none">
+          <img
+            src="/assets/aircraft-hero.jpg"
+            alt="Airlink flight sky backdrop"
+            className="w-full h-full object-cover opacity-20 filter blur-xs scale-105"
+            referrerPolicy="no-referrer"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#0B1E36] via-[#0B1E36]/90 to-[#0B1E36]/75" />
+        </div>
+
+        <div className="relative z-10 w-full flex-1 flex items-center justify-center">
           <LoginPage
             onSuccessNavigate={() => {
               setBookingStep(1);
@@ -139,7 +150,7 @@ function SkyBookMain() {
             }}
           />
         </div>
-        <div className="w-full max-w-5xl">
+        <div className="relative z-10 w-full max-w-5xl">
           <WebsiteWatermarkFooter variant="dark" />
         </div>
       </div>
@@ -202,6 +213,7 @@ function SkyBookMain() {
                   onSearch={(params) => handleSearchFlights(params, true)}
                   isLoading={isLoadingFlights}
                   onNavigateToRealtime={() => setCurrentNav('REALTIME')}
+                  onOpenProfile={() => setIsProfileModalOpen(true)}
                 />
               )}
 

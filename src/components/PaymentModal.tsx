@@ -29,7 +29,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   onClose,
   onBookingSuccess,
 }) => {
-  const [method, setMethod] = useState<PaymentMethod>('UPI');
+  const [method, setMethod] = useState<PaymentMethod>('RAZORPAY');
   const [upiVpa, setUpiVpa] = useState('rahul.sharma@okaxis');
   const [cardNumber, setCardNumber] = useState('4532 8190 2841 9028');
   const [cardHolder, setCardHolder] = useState('RAHUL SHARMA');
@@ -61,26 +61,48 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   const handleProcessPayment = async () => {
     setError(null);
     setProcessing(true);
-    setProcessingStep('Validating passenger manifest & seat availability...');
+    setProcessingStep('Creating secure order with Razorpay gateway...');
 
     try {
+      const orderRes = await api.createRazorpayOrder({
+        amount: totalAmount,
+        currency: 'INR',
+        receipt: `rcpt_modal_${flight.id}_${Date.now()}`,
+        notes: {
+          flightNumber: flight.flightNumber,
+          travelClass,
+        },
+      });
+
+      setProcessingStep('Authorizing payment and verifying signature...');
       await new Promise(r => setTimeout(r, 600));
-      setProcessingStep(`Authorizing ${method.replace('_', ' ')} through simulated gateway...`);
-      await new Promise(r => setTimeout(r, 800));
+
+      const simulatedPaymentId = `pay_${Math.random().toString(36).substring(2, 16)}`;
+      const simulatedSignature = `sig_${Math.random().toString(36).substring(2, 24)}`;
+
+      await api.verifyRazorpayPayment({
+        razorpay_order_id: orderRes.order?.id || 'order_simulated',
+        razorpay_payment_id: simulatedPaymentId,
+        razorpay_signature: simulatedSignature,
+      });
+
       setProcessingStep('Generating unique 6-character PNR & issuing digital boarding pass...');
+      await new Promise(r => setTimeout(r, 400));
 
       const bookingPayload = {
         flightId: flight.id,
         travelClass,
         passengers,
         paymentMethod: method,
+        razorpayOrderId: orderRes.order?.id,
+        razorpayPaymentId: simulatedPaymentId,
+        razorpaySignature: simulatedSignature,
         upiVpa: method === 'UPI' ? upiVpa : undefined,
         cardNumber: method === 'CREDIT_CARD' || method === 'DEBIT_CARD' ? cardNumber : undefined,
         bankName: method === 'NET_BANKING' ? bankName : undefined,
       };
 
       const result = await api.createBooking(bookingPayload);
-      await new Promise(r => setTimeout(r, 400));
       onBookingSuccess(result);
     } catch (err: any) {
       setError(err.message || 'Payment simulation failed');

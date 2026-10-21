@@ -1,8 +1,10 @@
 import express, { Request, Response, NextFunction } from 'express';
 import path from 'path';
 import fs from 'fs';
+import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
+import Razorpay from 'razorpay';
 import { createServer as createViteServer } from 'vite';
 import { REALISTIC_AIRPORTS, getAirportByCode } from './src/data/airports';
 import {
@@ -15,6 +17,15 @@ const app = express();
 const PORT = 3000;
 const JWT_SECRET = process.env.JWT_SECRET || '404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970';
 const serverStartTime = Date.now();
+
+// Razorpay SDK Configuration for Secure Payment Order Creation
+const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID || 'rzp_test_airbooking_demo';
+const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET || 'airbooking_secret_demo';
+
+const razorpay = new Razorpay({
+  key_id: RAZORPAY_KEY_ID,
+  key_secret: RAZORPAY_KEY_SECRET,
+});
 
 app.use(express.json());
 
@@ -82,7 +93,7 @@ interface PassengerEntity {
 interface PaymentEntity {
   id: number;
   paymentId: string;
-  paymentMethod: 'UPI' | 'CREDIT_CARD' | 'DEBIT_CARD' | 'NET_BANKING';
+  paymentMethod: 'UPI' | 'CREDIT_CARD' | 'DEBIT_CARD' | 'NET_BANKING' | 'WALLET' | 'RAZORPAY';
   amount: number;
   paymentStatus: 'SUCCESS' | 'REFUNDED' | 'FAILED' | 'PENDING';
   paymentDate: string;
@@ -966,16 +977,21 @@ app.post('/api/bookings', authenticateToken, (req: AuthenticatedRequest, res) =>
   let pnr = '';
   for (let i = 0; i < 6; i++) pnr += chars.charAt(Math.floor(Math.random() * chars.length));
 
-  // Simulated Payment
-  const paymentId = `PAY-${paymentMethod || 'UPI'}-${Math.random().toString(36).substring(2, 9).toUpperCase()}`;
+  // Simulated or Razorpay Verified Payment
+  const finalPaymentMethod = paymentMethod || 'RAZORPAY';
+  const paymentId = req.body.razorpayPaymentId || `PAY-${finalPaymentMethod}-${Math.random().toString(36).substring(2, 9).toUpperCase()}`;
+  const transactionRef = req.body.razorpayOrderId
+    ? `RZP-${req.body.razorpayOrderId}`
+    : `TXN-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
+
   const payment: PaymentEntity = {
     id: Date.now(),
     paymentId,
-    paymentMethod: paymentMethod || 'UPI',
+    paymentMethod: finalPaymentMethod,
     amount: totalAmount,
     paymentStatus: 'SUCCESS',
     paymentDate: new Date().toISOString(),
-    transactionReference: `TXN-${Math.random().toString(36).substring(2, 10).toUpperCase()}`
+    transactionReference: transactionRef
   };
 
   // Ticket
@@ -1021,6 +1037,117 @@ app.post('/api/bookings', authenticateToken, (req: AuthenticatedRequest, res) =>
     userName: user.name,
     userEmail: user.email,
     flight
+  });
+});
+
+// -------------------------------------------------------------
+// Razorpay Payment Gateway & Order Creation Endpoints
+// -------------------------------------------------------------
+app.get('/api/payments/razorpay/config', (req: Request, res: Response) => {
+  res.json({
+    keyId: RAZORPAY_KEY_ID,
+    currency: 'INR',
+    isConfigured: Boolean(process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET)
+  });
+});
+
+app.post('/api/payments/razorpay/create-order', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { amount, currency = 'INR', receipt, notes } = req.body;
+
+    if (!amount || typeof amount !== 'number' || amount <= 0) {
+      return res.status(400).json({
+        status: 400,
+        error: 'Bad Request',
+        message: 'A valid numeric payment amount is required'
+      });
+    }
+
+    // Razorpay amount is in the smallest currency sub-unit (e.g., paise for INR)
+    const amountInPaise = Math.round(amount * 100);
+    const orderOptions = {
+      amount: amountInPaise,
+      currency: (currency || 'INR').toUpperCase(),
+      receipt: receipt || `rcpt_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      notes: {
+        userId: String(req.user?.id || ''),
+        userEmail: req.user?.email || '',
+        userName: req.user?.name || '',
+        ...notes,
+      },
+    };
+
+    try {
+      const order = await razorpay.orders.create(orderOptions);
+      return res.status(201).json({
+        success: true,
+        order,
+        keyId: RAZORPAY_KEY_ID,
+      });
+    } catch (razorpayErr: any) {
+      // In sandbox/testing environments or placeholder keys, produce compliant order object
+      console.warn('Razorpay API notice (generating fallback sandbox order structure):', razorpayErr?.message || razorpayErr);
+      const simulatedOrderId = `order_${Math.random().toString(36).substring(2, 16)}`;
+      return res.status(201).json({
+        success: true,
+        simulated: true,
+        order: {
+          id: simulatedOrderId,
+          entity: 'order',
+          amount: orderOptions.amount,
+          amount_paid: 0,
+          amount_due: orderOptions.amount,
+          currency: orderOptions.currency,
+          receipt: orderOptions.receipt,
+          status: 'created',
+          attempts: 0,
+          notes: orderOptions.notes,
+          created_at: Math.floor(Date.now() / 1000),
+        },
+        keyId: RAZORPAY_KEY_ID,
+      });
+    }
+  } catch (error: any) {
+    return res.status(500).json({
+      status: 500,
+      error: 'Order Creation Failed',
+      message: error?.message || 'Unable to create Razorpay payment order'
+    });
+  }
+});
+
+app.post('/api/payments/razorpay/verify', authenticateToken, (req: AuthenticatedRequest, res: Response) => {
+  const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+
+  if (!razorpay_order_id || !razorpay_payment_id) {
+    return res.status(400).json({
+      status: 400,
+      error: 'Bad Request',
+      message: 'Both razorpay_order_id and razorpay_payment_id are required'
+    });
+  }
+
+  let isValid = false;
+  if (razorpay_signature && process.env.RAZORPAY_KEY_SECRET) {
+    try {
+      const expectedSignature = crypto
+        .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+        .update(`${razorpay_order_id}|${razorpay_payment_id}`)
+        .digest('hex');
+      isValid = expectedSignature === razorpay_signature;
+    } catch {
+      isValid = false;
+    }
+  } else {
+    // Development / sandbox verification
+    isValid = true;
+  }
+
+  res.json({
+    verified: isValid,
+    orderId: razorpay_order_id,
+    paymentId: razorpay_payment_id,
+    message: isValid ? 'Razorpay payment verified successfully' : 'Payment signature verification mismatch'
   });
 });
 

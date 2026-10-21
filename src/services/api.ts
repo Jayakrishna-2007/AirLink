@@ -275,5 +275,53 @@ export const api = {
     const res = await fetch(`${API_BASE}/realtime-flights/airport/${encodeURIComponent(code)}`);
     if (!res.ok) throw new Error(`Failed to fetch live board for ${code}`);
     return res.json();
+  },
+
+  // Razorpay Payment Services
+  async getRazorpayConfig(): Promise<{ keyId: string; currency: string; isConfigured: boolean }> {
+    const res = await fetch(`${API_BASE}/payments/razorpay/config`);
+    if (!res.ok) throw new Error('Failed to fetch payment config');
+    return res.json();
+  },
+
+  async createRazorpayOrder(params: {
+    amount: number;
+    currency?: string;
+    receipt?: string;
+    notes?: Record<string, string>;
+  }): Promise<{ success: boolean; simulated?: boolean; order: any; keyId: string }> {
+    const res = await fetch(`${API_BASE}/payments/razorpay/create-order`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeader(),
+      },
+      body: JSON.stringify(params),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ message: 'Failed to create payment order' }));
+      throw new Error(err.message || 'Failed to create payment order');
+    }
+    return res.json();
+  },
+
+  async verifyRazorpayPayment(data: {
+    razorpay_order_id: string;
+    razorpay_payment_id: string;
+    razorpay_signature?: string;
+  }): Promise<{ verified: boolean; orderId: string; paymentId: string; message: string }> {
+    const res = await fetch(`${API_BASE}/payments/razorpay/verify`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeader(),
+      },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ message: 'Payment verification failed' }));
+      throw new Error(err.message || 'Payment verification failed');
+    }
+    return res.json();
   }
 };

@@ -8,7 +8,7 @@ export type SeatStatus = 'AVAILABLE' | 'OCCUPIED' | 'SELECTED';
 
 export type BookingStatus = 'CONFIRMED' | 'CANCELLED' | 'PENDING';
 
-export type PaymentMethod = 'UPI' | 'CREDIT_CARD' | 'DEBIT_CARD' | 'NET_BANKING' | 'WALLET';
+export type PaymentMethod = 'RAZORPAY' | 'UPI' | 'CREDIT_CARD' | 'DEBIT_CARD' | 'NET_BANKING' | 'WALLET';
 
 export type PaymentStatus = 'SUCCESS' | 'REFUNDED' | 'FAILED' | 'PENDING';
 

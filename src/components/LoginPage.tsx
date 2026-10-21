@@ -155,7 +155,16 @@ export const LoginPage: React.FC<LoginPageProps> = ({
       <div className="bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden grid grid-cols-1 lg:grid-cols-12 min-h-[580px]">
         
         {/* Left Side: Brand Visual & Aviation Highlights (5 columns) */}
-        <div className="lg:col-span-5 bg-gradient-to-br from-[#0B1E36] via-[#102a4c] to-[#0A1828] text-white p-8 sm:p-10 flex flex-col justify-between relative overflow-hidden">
+        <div className="lg:col-span-5 bg-[#0B1E36] text-white p-8 sm:p-10 flex flex-col justify-between relative overflow-hidden">
+          
+          {/* Authentic Flight Background Overlay */}
+          <img
+            src="/assets/aircraft-hero.jpg"
+            alt="Commercial airliner in flight"
+            className="absolute inset-0 w-full h-full object-cover opacity-30 mix-blend-luminosity pointer-events-none"
+            referrerPolicy="no-referrer"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#0B1E36] via-[#0B1E36]/80 to-[#0B1E36]/65 pointer-events-none" />
           
           {/* Subtle decorative aviation circles & flight line */}
           <div className="absolute -right-16 -top-16 w-64 h-64 rounded-full bg-blue-500/10 blur-2xl pointer-events-none" />
